@@ -53,7 +53,7 @@ import kotlin.math.hypot
 class MainActivity : Activity(), SensorEventListener {
 
     companion object {
-        const val START_URL = "https://persgatan51.github.io/zeno/"
+        const val START_URL = "https://persgatan51.github.io/Zeno/"
         const val HOST = "persgatan51.github.io"
         const val BRIDGE_VERSION = "1"
         const val REQ_FILE = 42

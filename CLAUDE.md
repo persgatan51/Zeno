@@ -4,7 +4,7 @@
 - Zeno är en reseguide: fota en byggnad → få namn och historia → välj nästa stopp i närheten → vägvisning dit.
 - Vad som ska byggas står i `docs/kravspec-etapp-1.md`. Bygg en etapp i taget och håll dig till kravspecen.
 - Samma uppbyggnad som Skivbacken (persgatan51/skivhyllan), använd den som förlaga:
-  - Webbappen är en enda fil, `index.html`, som körs från GitHub Pages: https://persgatan51.github.io/zeno/
+  - Webbappen är en enda fil, `index.html`, som körs från GitHub Pages: https://persgatan51.github.io/Zeno/
   - `android/` är ett tunt WebView-skal (Kotlin). GitHub Actions bygger APK:n när något under `android/` ändras och lägger den i releasen `app` som `zeno.apk`.
   - Behåll `applicationId = se.persgatan.zeno` och den fasta debug-nyckeln, annars installeras inte uppdateringar ovanpå.
 - Ingen backend. All data och alla nycklar ligger i localStorage i appen. Inga nycklar i repot.

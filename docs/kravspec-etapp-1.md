@@ -97,7 +97,7 @@ Bakgrund, marknadsanalys och hela färdplanen finns i dokumentet "Zeno – resea
 
 - Kopiera upplägget från Skivbacken: `android/` med Kotlin `MainActivity`, WebView, fast debug-nyckel i repot, GitHub Actions bygger APK vid ändring under `android/` och lägger den i releasen `app` som `zeno.apk`.
 - `applicationId = "se.persgatan.zeno"`, appnamn **Zeno**.
-- `START_URL = "https://persgatan51.github.io/zeno/"`, med `?v=` vid start så att sidan alltid är färsk.
+- `START_URL = "https://persgatan51.github.io/Zeno/"`, med `?v=` vid start så att sidan alltid är färsk.
 - Kameran via `<input type="file" capture>` och FileProvider, som i Skivbacken.
 
 ### 4.2 Nytt jämfört med Skivbacken
