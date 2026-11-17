@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b4f4c">
+<title>Zeno</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#f6f3ec;--card:#fff;--fg:#16191d;--mut:#5d6570;--acc:#0b4f4c;--acc2:#f2b544;--line:#e2ddd2;--ok:#1f7a3a;--bad:#b3261e}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+  button:disabled{opacity:.5}
+  input,select,textarea{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+  a{color:var(--acc)}
+  .m{color:var(--mut);font-size:14px}
+  .top{display:flex;align-items:center;gap:10px;padding:14px 16px 6px}
+  .top h1{flex:1;margin:0;font-size:24px;letter-spacing:.5px;color:var(--acc)}
+  .top button{border:0;background:none;font-size:24px;padding:4px 8px}
+  main{padding:0 16px 40px}
+  .hero{display:flex;flex-direction:column;gap:10px;margin:14px 0 8px}
+  .shoot{background:var(--acc);color:#fff;border:0;border-radius:20px;padding:26px 16px;font-size:24px;font-weight:700;box-shadow:0 6px 18px rgba(11,79,76,.25)}
+  .sec{border-radius:16px;padding:14px;font-weight:600;font-size:18px}
+  .status{font-size:14px;color:var(--mut);text-align:center;min-height:21px}
+  h2.sub{font-size:16px;color:var(--mut);margin:22px 0 6px;font-weight:600}
+  .hist{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);background:none;border-radius:0;border-left:0;border-right:0;border-top:0;width:100%;text-align:left}
+  .hist img,.hist .ph{width:56px;height:56px;border-radius:10px;object-fit:cover;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .hist .n{font-weight:600;line-height:1.3}
+  .tag{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--mut);white-space:nowrap}
+  .tag.ok{background:#dcefe1;color:var(--ok)} .tag.bad{background:#f6dcda;color:var(--bad)}
+  .view{position:fixed;inset:0;background:var(--bg);z-index:10;display:none;overflow:auto;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+  .view.open{display:block}
+  .bar{position:sticky;top:0;z-index:3;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 12px 8px;display:flex;gap:8px;align-items:center}
+  .bar button{border:0;background:none;font-size:18px;font-weight:600;color:var(--acc);padding:6px 4px}
+  .pad{padding:0 16px}
+  /* kamera */
+  .cam{background:#000;overflow:hidden;padding:0}
+  .cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .camtop{position:absolute;left:0;right:0;top:0;padding:calc(12px + env(safe-area-inset-top)) 14px 12px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(rgba(0,0,0,.55),transparent);color:#fff}
+  .camtop button{background:rgba(0,0,0,.4);color:#fff;border:0;font-size:20px;width:44px;height:44px;padding:0}
+  .camtop span{font-weight:600;font-size:16px;background:rgba(0,0,0,.4);padding:6px 12px;border-radius:999px}
+  .cambottom{position:absolute;left:0;right:0;bottom:0;padding:20px 20px calc(28px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto 1fr;align-items:center;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+  #shutter{width:78px;height:78px;border-radius:50%;background:#fff;border:6px solid rgba(255,255,255,.45);background-clip:padding-box;padding:0}
+  .cambottom label{color:#fff;font-size:14px;text-decoration:underline}
+  .cambottom input{display:none}
+  .camhint{position:absolute;left:0;right:0;bottom:calc(130px + env(safe-area-inset-bottom));text-align:center;color:#fff;font-size:15px;text-shadow:0 1px 3px #000}
+  /* resultat */
+  .heroimg{width:100%;max-height:300px;object-fit:cover;display:block;background:var(--line)}
+  .busy{display:flex;flex-direction:column;align-items:center;gap:16px;padding:30px 16px;text-align:center}
+  .busy img{width:180px;height:180px;object-fit:cover;border-radius:16px}
+  .spin{width:34px;height:34px;border:4px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .err{background:#fbe9e7;border:1px solid #f3c2bc;color:#7a1b14;border-radius:14px;padding:14px;margin:16px}
+  .place h2{font-size:26px;line-height:1.2;margin:16px 0 4px}
+  .lead{font-size:20px;line-height:1.45;font-weight:500;margin:12px 0}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--line);padding:4px;border-radius:14px;margin:14px 0}
+  .seg button{border:0;border-radius:10px;background:none;padding:9px 4px;font-size:15px;font-weight:600;color:var(--mut)}
+  .seg button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .story p{margin:0 0 12px}
+  .story h3{font-size:18px;margin:18px 0 6px;color:var(--acc)}
+  .big{display:block;width:100%;padding:14px;border-radius:14px;font-weight:700;font-size:18px;text-align:center}
+  .big.pri{background:var(--acc);color:#fff;border:0}
+  .facts{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .fact{font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:5px 10px}
+  .fact b{font-weight:600}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:18px 0}
+  .box h4{margin:0 0 8px;font-size:16px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .two button{border-radius:12px;padding:12px;font-weight:700}
+  .two button.okon{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .two button.badon{background:var(--bad);color:#fff;border-color:var(--bad)}
+  .qa{margin-top:10px}
+  .q{font-weight:600;margin-top:12px}
+  .ask{display:flex;gap:8px;margin-top:10px}
+  .ask button{border-radius:12px;background:var(--acc);color:#fff;border:0;font-weight:700}
+  .src{font-size:13px;color:var(--mut);margin-top:20px;line-height:1.6}
+  .cand{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center;padding:12px;margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;width:100%;text-align:left}
+  .cand img,.cand .ph{width:84px;height:84px;border-radius:12px;object-fit:cover;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:28px}
+  .cand .n{font-weight:700;font-size:18px;line-height:1.25}
+  /* inställningar */
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:20}
+  .sheet.open{display:flex}
+  .panel{background:var(--bg);width:100%;max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom))}
+  .panel h2{margin:0 0 6px}
+  label.f{display:block;font-weight:600;margin:16px 0 6px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chips button{border-radius:12px;padding:10px 12px}
+  .chips button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .row{display:flex;gap:8px;align-items:center}
+  #toast{position:fixed;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));background:#222;color:#fff;padding:12px 16px;border-radius:12px;z-index:30;display:none;font-size:15px}
+  .log li{margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Zeno</h1>
+  <button id="btnSettings" aria-label="Inställningar">⚙︎</button>
+</header>
+
+<main id="home">
+  <div class="hero">
+    <button id="btnShoot" class="shoot">📷&nbsp; Fota en byggnad</button>
+    <button id="btnWhere" class="sec">📍 Vad står jag vid?</button>
+    <div id="gpsStatus" class="status"></div>
+  </div>
+  <div id="statsLine" class="m"></div>
+  <h2 class="sub" id="histTitle" hidden>Senaste platserna</h2>
+  <div id="history"></div>
+</main>
+
+<!-- Kameran i appen -->
+<div id="cam" class="view cam">
+  <video id="video" playsinline muted autoplay></video>
+  <div class="camtop"><button id="camClose" aria-label="Stäng">✕</button><span id="camHeading">Kompass…</span></div>
+  <div class="camhint">Rikta mot byggnaden och håll telefonen stilla</div>
+  <div class="cambottom">
+    <label>Kameraappen<input type="file" id="fileAlt" accept="image/*" capture="environment"></label>
+    <button id="shutter" aria-label="Ta foto"></button>
+    <span></span>
+  </div>
+</div>
+
+<!-- Resultat och berättelse -->
+<div id="res" class="view">
+  <div class="bar"><button id="resBack">‹ Tillbaka</button></div>
+  <div id="resBody"></div>
+</div>
+
+<!-- Inställningar -->
+<div id="setSheet" class="sheet"><div class="panel" id="setBody"></div></div>
+
+<input type="file" id="fileFallback" accept="image/*" capture="environment" hidden>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ================= Version och ändringslogg ================= */
+const WEB_VERSION = '1.0.0';
+const CHANGELOG = [
+  ['1.0.0', '17 nov 2026', [
+    'Första versionen: fota en byggnad och få namn och historia på svenska.',
+    'Position och kompass hjälper Zeno att välja rätt byggnad bland platserna i närheten.',
+    'Osäkra fall visar 2–3 förslag att välja bland. Hittar Zeno inte platsen beskrivs stil och epok i stället.',
+    'Berättelsen finns i tre lager (kort, en minut, fördjupning) med källa, uppläsning och följdfrågor.',
+    '"Vad står jag vid?" fungerar utan foto.',
+    'Rätt/fel-knappar mäter träffsäkerheten (mål: 8 av 10).'
+  ]]
+];
+
+/* ================= Hjälpfunktioner ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const LS = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { console.log('LS.set', k, e); return false; } }
+};
+function toast(msg, ms = 3500) {
+  const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.h); toast.h = setTimeout(() => { t.style.display = 'none'; }, ms);
+}
+const today = () => new Date().toLocaleDateString('sv-SE');
+
+/* ================= Inställningar ================= */
+const INTERESTS = [
+  ['arkitektur', 'Arkitektur'], ['historia', 'Historia och makt'], ['konst', 'Konst'], ['kyrkor', 'Kyrkor och religion'],
+  ['kuriosa', 'Kuriosa'], ['mat', 'Mat och dryck'], ['natur', 'Natur och parker'], ['barn', 'Barnvänligt']
+];
+const DEPTHS = [['one', 'Kort'], ['minute', 'En minut'], ['deep', 'Fördjupning']];
+let cfg = Object.assign({ gemini: '', geminiModel: '', interests: [], depth: 'minute' }, LS.get('zn.cfg', {}));
+const saveCfg = () => LS.set('zn.cfg', cfg);
+const interestLabels = () => cfg.interests.map(id => (INTERESTS.find(i => i[0] === id) || [id, id])[1]);
+
+/* ================= Bryggan till Android-skalet ================= */
+const hasApp = typeof window.App !== 'undefined';
+function nativeVer() { try { return hasApp ? (parseInt(App.version(), 10) || 0) : 0; } catch { return 0; } }
+const cbs = {};
+window.__cb = (id, ok, data) => {
+  const c = cbs[id]; if (!c) return; delete cbs[id];
+  ok ? c.res(data) : c.rej(new Error(data));
+};
+function callNative(fn) {
+  return new Promise((res, rej) => {
+    const id = 'c' + Date.now() + Math.random().toString(36).slice(2, 7);
+    cbs[id] = { res, rej };
+    try { fn(id); } catch (e) { delete cbs[id]; rej(e); }
+  });
+}
+
+/* ================= Position ================= */
+let pos = null, posErr = '';
+function setPos(p) { pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: Math.round(p.coords.accuracy), t: Date.now() }; posErr = ''; }
+function posMessage(e) {
+  return e && e.code === 1 ? 'Zeno får inte använda positionen. Tillåt plats för Zeno i telefonens inställningar.'
+    : 'Hittar ingen position. Gå ut i det fria en stund, eller kolla att platstjänster är på.';
+}
+function startGps() {
+  if (!navigator.geolocation) { posErr = 'Telefonen ger ingen position.'; updateGps(); return; }
+  navigator.geolocation.watchPosition(p => { setPos(p); updateGps(); },
+    e => { posErr = posMessage(e); updateGps(); },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+}
+function updateGps() {
+  const el = $('#gpsStatus');
+  if (pos && Date.now() - pos.t < 60000) el.textContent = `Position klar (±${pos.acc} m)`;
+  else el.textContent = posErr || 'Söker position…';
+}
+function freshPos() {
+  if (pos && Date.now() - pos.t < 15000) return Promise.resolve(pos);
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error('Telefonen ger ingen position.'));
+    navigator.geolocation.getCurrentPosition(p => { setPos(p); updateGps(); res(pos); },
+      e => (pos && Date.now() - pos.t < 120000) ? res(pos) : rej(new Error(posMessage(e))),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
+  });
+}
+
+/* ================= Kompass ================= */
+const headSamples = [];
+function pushHead(h) {
+  if (h == null || isNaN(h) || h < 0) return;
+  const now = Date.now();
+  headSamples.push({ t: now, h });
+  while (headSamples.length && now - headSamples[0].t > 6000) headSamples.shift();
+}
+function startCompass() {
+  if (nativeVer() >= 1) {
+    setInterval(() => { try { pushHead(App.heading(pos ? pos.lat : 999, pos ? pos.lon : 999)); } catch { } }, 150);
+  } else {
+    window.addEventListener('deviceorientationabsolute', e => { if (e.alpha != null) pushHead((360 - e.alpha) % 360); });
+    window.addEventListener('deviceorientation', e => { if (e.webkitCompassHeading != null) pushHead(e.webkitCompassHeading); });
+  }
+}
+/** Medelriktning de senaste ms millisekunderna, eller null om kompass saknas eller telefonen svängt för mycket. */
+function headingNow(ms = 1500) {
+  const s = headSamples.filter(x => Date.now() - x.t <= ms);
+  if (s.length < 2) return null;
+  let x = 0, y = 0;
+  for (const { h } of s) { x += Math.cos(h * Math.PI / 180); y += Math.sin(h * Math.PI / 180); }
+  if (Math.hypot(x, y) / s.length < 0.6) return null;
+  return Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
+}
+const DIRS = ['norr', 'nordost', 'öster', 'sydost', 'söder', 'sydväst', 'väster', 'nordväst'];
+const dirName = h => DIRS[Math.round(h / 45) % 8];
+const angDiff = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+function haversine(a, b) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function bearing(a, b) {
+  const r = Math.PI / 180;
+  const y = Math.sin((b.lon - a.lon) * r) * Math.cos(b.lat * r);
+  const x = Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos((b.lon - a.lon) * r);
+  return (Math.atan2(y, x) / r + 360) % 360;
+}
+const fmtDist = m => m < 1000 ? `${Math.round(m / 5) * 5} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+
+/* ================= Bilder ================= */
+function drawToB64(src, w, h, max, q = 0.85) {
+  const s = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * s); c.height = Math.round(h * s);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', q).split(',')[1];
+}
+function loadImg(url) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Kunde inte läsa bilden')); i.src = url; });
+}
+async function fileToB64(file) {
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    return drawToB64(bmp, bmp.width, bmp.height, 1024);
+  } catch {
+    const url = URL.createObjectURL(file);
+    try { const img = await loadImg(url); return drawToB64(img, img.naturalWidth, img.naturalHeight, 1024); }
+    finally { URL.revokeObjectURL(url); }
+  }
+}
+async function resizeB64(b64, max) {
+  const img = await loadImg('data:image/jpeg;base64,' + b64);
+  return drawToB64(img, img.naturalWidth, img.naturalHeight, max, max <= 200 ? 0.6 : 0.85);
+}
+async function thumbFrom(b64) { try { return 'data:image/jpeg;base64,' + await resizeB64(b64, 160); } catch { return ''; } }
+
+/* ================= Nätanrop ================= */
+async function getJSON(url, opts = {}, ms = 15000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, { ...opts, signal: ctl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+const qs = o => new URLSearchParams(o).toString();
+
+/* ================= Platser i närheten ================= */
+async function wikiNearby(lang, p, radius) {
+  const j = await getJSON(`https://${lang}.wikipedia.org/w/api.php?` + qs({
+    action: 'query', format: 'json', origin: '*', generator: 'geosearch', ggscoord: `${p.lat}|${p.lon}`,
+    ggsradius: String(radius), ggslimit: '30', prop: 'coordinates|pageimages|description|pageprops',
+    piprop: 'thumbnail', pithumbsize: '320', ppprop: 'wikibase_item', colimit: '50'
+  }));
+  return Object.values(j.query?.pages || {}).filter(pg => pg.coordinates?.[0]).map(pg => ({
+    qid: pg.pageprops?.wikibase_item || null, name: pg.title, desc: pg.description || '',
+    lat: pg.coordinates[0].lat, lon: pg.coordinates[0].lon, thumb: pg.thumbnail?.source || '', wp: { [lang]: pg.title }
+  }));
+}
+const OSM_KIND = {
+  church: 'kyrka', cathedral: 'katedral', chapel: 'kapell', castle: 'slott/borg', fort: 'fästning', monument: 'monument',
+  memorial: 'minnesmärke', ruins: 'ruin', building: 'historisk byggnad', manor: 'herrgård', city_gate: 'stadsport',
+  tower: 'torn', lighthouse: 'fyr', bridge: 'bro', museum: 'museum', artwork: 'konstverk', attraction: 'sevärdhet',
+  viewpoint: 'utsiktsplats', gallery: 'galleri', place_of_worship: 'religiös byggnad', archaeological_site: 'fornlämning'
+};
+function osmKind(t) {
+  const k = t.historic || t.tourism || t.man_made || t.amenity || '';
+  const base = OSM_KIND[k] || (k && k !== 'yes' ? k.replace(/_/g, ' ') : 'plats');
+  return t.start_date ? `${base}, från ${t.start_date}` : base;
+}
+async function osmNearby(p, radius = 200) {
+  const a = `(around:${radius},${p.lat},${p.lon})`;
+  const q = `[out:json][timeout:15];(` +
+    `nwr${a}[name][historic];` +
+    `nwr${a}[name][tourism~"^(attraction|museum|artwork|viewpoint|gallery)$"];` +
+    `nwr${a}[name][amenity=place_of_worship];` +
+    `nwr${a}[name][building][wikidata];` +
+    `nwr${a}[name][man_made~"^(tower|lighthouse|bridge)$"];` +
+    `);out center tags 80;`;
+  const j = await getJSON('https://overpass-api.de/api/interpreter', {
+    method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' }
+  }, 20000);
+  return (j.elements || []).map(el => {
+    const t = el.tags || {};
+    const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
+    if (lat == null || !t.name) return null;
+    const wpTag = t.wikipedia && t.wikipedia.includes(':') ? t.wikipedia.split(':') : null;
+    return {
+      qid: t.wikidata || null, name: t['name:sv'] || t.name, desc: osmKind(t), lat, lon, thumb: '',
+      wp: wpTag ? { [wpTag[0]]: wpTag.slice(1).join(':') } : {}, osm: { type: el.type, id: el.id, tags: t }
+    };
+  }).filter(Boolean);
+}
+function mergeCands(list) {
+  const map = new Map();
+  for (const c of list) {
+    const key = c.qid || (c.osm ? `osm:${c.osm.type}/${c.osm.id}` : `wp:${Object.entries(c.wp).map(e => e.join(':'))[0]}`);
+    const old = map.get(key);
+    if (!old) { map.set(key, { ...c, id: key, wp: { ...c.wp } }); continue; }
+    old.wp = { ...c.wp, ...old.wp };
+    if (!old.thumb && c.thumb) old.thumb = c.thumb;
+    if ((!old.desc || old.osm) && c.desc && !c.osm) old.desc = c.desc;
+    if (!old.osm && c.osm) old.osm = c.osm;
+  }
+  for (const c of map.values()) c.name = c.wp.sv || c.osm?.tags?.['name:sv'] || c.name || c.wp.en;
+  return [...map.values()];
+}
+function rankCands(cands, p, heading) {
+  for (const c of cands) {
+    c.dist = Math.round(haversine(p, c));
+    c.bearing = Math.round(bearing(p, c));
+    c.inView = heading == null ? null : (c.dist < 30 || angDiff(heading, c.bearing) <= 35);
+  }
+  return cands.filter(c => c.dist <= 800)
+    .sort((a, b) => ((b.inView === true) - (a.inView === true)) || a.dist - b.dist);
+}
+async function getCandidates(p, heading) {
+  const first = await Promise.allSettled([wikiNearby('sv', p, 300), wikiNearby('en', p, 300), osmNearby(p, 200)]);
+  if (first.every(r => r.status === 'rejected')) throw new Error('Kunde inte hämta platser i närheten. Har du nät?');
+  let all = first.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
+  let cands = mergeCands(all);
+  if (cands.length < 5) {
+    const more = await Promise.allSettled([wikiNearby('sv', p, 600), wikiNearby('en', p, 600)]);
+    all = all.concat(more.filter(r => r.status === 'fulfilled').flatMap(r => r.value));
+    cands = mergeCands(all);
+  }
+  return rankCands(cands, p, heading);
+}
+
+/* ================= Gemini (gratisnivån) ================= */
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+function gemCount(add = 0) {
+  let c = LS.get('zn.gem', { day: today(), n: 0 });
+  if (c.day !== today()) c = { day: today(), n: 0 };
+  c.n += add; LS.set('zn.gem', c); return c.n;
+}
+async function gemini(parts, { json = true, temperature = 0.2 } = {}) {
+  if (!cfg.gemini) throw new Error('Lägg in din Gemini-nyckel under ⚙︎.');
+  const models = cfg.geminiModel ? [cfg.geminiModel, ...GEMINI_MODELS.filter(m => m !== cfg.geminiModel)] : GEMINI_MODELS;
+  let last = '';
+  for (const model of models) {
+    const call = () => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': cfg.gemini },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts }],
+        generationConfig: { responseMimeType: json ? 'application/json' : 'text/plain', temperature }
+      })
+    });
+    let r;
+    try { r = await call(); if (r.status === 503) { await sleep(1500); r = await call(); } }
+    catch { throw new Error('Kunde inte nå Gemini. Har du nät?'); }
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) {
+      gemCount(1);
+      const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+      if (!json) return text;
+      try { return JSON.parse(text); } catch { }
+      const m = text.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error('Kunde inte tolka svaret från Gemini.');
+      return JSON.parse(m[0]);
+    }
+    if (r.status === 400 && /API key/i.test(j.error?.message || '')) throw new Error('Gemini godkände inte nyckeln. Kolla den under ⚙︎.');
+    last = j.error?.message || String(r.status);
+    // 429 = dagens gratisanrop slut för modellen, 404 = modellen finns inte, 500/503 = överbelastad: prova nästa.
+    if (![429, 404, 403, 500, 503].includes(r.status)) break;
+  }
+  throw new Error(/quota|429|exhausted/i.test(last) ? 'Dagens gratisanrop till Gemini är slut. Försök igen i morgon.'
+    : /overload|unavailable|503|500/i.test(last) ? 'Gemini är överbelastat just nu. Försök igen om en stund.' : 'Gemini: ' + last);
+}
+
+/* ================= Identifiering ================= */
+async function identify(b64, cands, p, heading) {
+  const list = cands.slice(0, 15).map((c, i) => ({ c, sid: 'p' + (i + 1) }));
+  const lines = list.map(({ c, sid }) =>
+    `${sid} | ${c.name} | ${c.desc || '-'} | ${c.dist} m | ${dirName(c.bearing)} (${c.bearing}°) | ${c.inView === true ? 'i blickfånget' : c.inView === false ? 'utanför blickfånget' : 'okänt'}`
+  ).join('\n') || '(inga kända platser i närheten)';
+  const prompt = `Du hjälper en resenär att identifiera en byggnad eller sevärdhet på ett foto.
+Resenären stod på ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} (noggrannhet ±${p.acc} m) ${heading == null ? 'och kompassriktning saknas.' : `och höll kameran mot ${heading}° (${dirName(heading)}; 0 = norr, 90 = öster).`}
+
+Platser i närheten (id | namn | beskrivning | avstånd | riktning från resenären | blickfång):
+${lines}
+
+Uppgift: avgör vilken av platserna i listan som syns på fotot. Du får BARA välja ett id från listan, eller null om ingen stämmer.
+Det är bättre att vara osäker än att gissa. Väg samman utseendet på bilden, avståndet och riktningen.
+
+Svara enbart med JSON:
+{"match_id": "id eller null", "confidence": "high|medium|low", "alternatives": ["id"], "seen": "...", "style": "...", "era": "..."}
+- confidence "high" bara om bilden tydligt stämmer med platsen och läget stämmer.
+- alternatives: upp till 2 andra id som också kan vara möjliga.
+- seen: vad som syns på bilden, en kort mening på svenska.
+- style: arkitekturstil på svenska om den går att bedöma, annars null.
+- era: ungefärlig tid då byggnaden uppfördes, på svenska, annars null.`;
+  const res = await gemini([{ inline_data: { mime_type: 'image/jpeg', data: b64 } }, { text: prompt }], { temperature: 0.1 });
+  const byId = id => { let k = String(id ?? '').trim().toLowerCase(); if (/^\d+$/.test(k)) k = 'p' + k; return list.find(x => x.sid === k)?.c || null; };
+  const match = byId(res.match_id);
+  const alts = (Array.isArray(res.alternatives) ? res.alternatives : []).map(byId).filter(c => c && c !== match);
+  return { match, alts, confidence: ['high', 'medium', 'low'].includes(res.confidence) ? res.confidence : 'low', seen: res.seen, style: res.style, era: res.era };
+}
+
+/* ================= Källor: Wikipedia, Wikidata, OpenStreetMap ================= */
+async function wikiExtract(lang, title) {
+  const j = await getJSON(`https://${lang}.wikipedia.org/w/api.php?` + qs({
+    action: 'query', format: 'json', origin: '*', prop: 'extracts|info', explaintext: '1', exsectionformat: 'plain',
+    inprop: 'url', redirects: '1', titles: title
+  }));
+  const pg = Object.values(j.query?.pages || {})[0];
+  if (!pg || !pg.extract) return null;
+  const text = pg.extract.replace(/\n{2,}/g, '\n').slice(0, 7000);
+  return { lang, title: pg.title, url: pg.fullurl || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(pg.title.replace(/ /g, '_'))}`, text };
+}
+function wdYear(v) {
+  if (!v || !v.time) return null;
+  const neg = v.time[0] === '-';
+  const y = parseInt(v.time.slice(1, v.time.indexOf('-', 1)), 10);
+  if (!y) return null;
+  if (v.precision != null && v.precision < 9) return neg ? `${y} f.Kr. (ungefär)` : `${Math.floor(y / 100) + 1}00-talet`;
+  return neg ? `${y} f.Kr.` : String(y);
+}
+async function wikidataInfo(qid) {
+  const j = await getJSON('https://www.wikidata.org/w/api.php?' + qs({
+    action: 'wbgetentities', ids: qid, props: 'sitelinks|claims|labels', languages: 'sv|en',
+    sitefilter: 'svwiki|enwiki', format: 'json', origin: '*'
+  }));
+  const e = j.entities?.[qid];
+  if (!e) return null;
+  const claims = e.claims || {};
+  const vals = p => (claims[p] || []).map(c => c.mainsnak?.datavalue?.value).filter(Boolean);
+  const refProps = { P31: 'Typ', P84: 'Arkitekt', P149: 'Stil', P1435: 'Kulturarv' };
+  const refIds = {};
+  for (const p of Object.keys(refProps)) refIds[p] = vals(p).map(v => v.id).filter(Boolean).slice(0, 3);
+  const all = [...new Set(Object.values(refIds).flat())];
+  let labels = {};
+  if (all.length) {
+    const l = await getJSON('https://www.wikidata.org/w/api.php?' + qs({
+      action: 'wbgetentities', ids: all.join('|'), props: 'labels', languages: 'sv|en', format: 'json', origin: '*'
+    })).catch(() => ({}));
+    for (const [id, ent] of Object.entries(l.entities || {})) labels[id] = ent.labels?.sv?.value || ent.labels?.en?.value;
+  }
+  const facts = [];
+  const add = (label, value) => { if (value) facts.push({ label, value }); };
+  add('Typ', refIds.P31.map(id => labels[id]).filter(Boolean).join(', '));
+  add('Byggd', wdYear(vals('P571')[0]));
+  add('Arkitekt', refIds.P84.map(id => labels[id]).filter(Boolean).join(', '));
+  add('Stil', refIds.P149.map(id => labels[id]).filter(Boolean).join(', '));
+  add('Kulturarv', refIds.P1435.map(id => labels[id]).filter(Boolean).join(', '));
+  const img = vals('P18')[0];
+  return {
+    facts,
+    image: img ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(img)}?width=900` : '',
+    sitelinks: Object.fromEntries([['sv', e.sitelinks?.svwiki?.title], ['en', e.sitelinks?.enwiki?.title]].filter(x => x[1]))
+  };
+}
+const OSM_KEYS = ['name', 'historic', 'tourism', 'building', 'amenity', 'denomination', 'start_date', 'architect', 'building:architecture', 'heritage', 'description', 'inscription', 'man_made', 'height'];
+async function fetchSources(c) {
+  let titles = { ...c.wp };
+  let wd = null;
+  if (c.qid) { wd = await wikidataInfo(c.qid).catch(() => null); if (wd?.sitelinks) titles = { ...wd.sitelinks, ...titles }; }
+  const texts = [];
+  if (titles.sv) { const t = await wikiExtract('sv', titles.sv).catch(() => null); if (t) texts.push(t); }
+  if (titles.en && (!texts.length || texts[0].text.length < 2500)) { const t = await wikiExtract('en', titles.en).catch(() => null); if (t) texts.push(t); }
+  const osmTags = c.osm?.tags ? Object.fromEntries(Object.entries(c.osm.tags).filter(([k]) => OSM_KEYS.includes(k))) : null;
+  if (!texts.length && !wd?.facts?.length && !osmTags) throw new Error('Hittade inga källor om platsen.');
+  return { texts, facts: wd?.facts || [], image: wd?.image || '', osmTags, qid: c.qid };
+}
+function sourceText(src) {
+  const parts = [];
+  if (src.facts.length) parts.push('[Wikidata] ' + src.facts.map(f => `${f.label}: ${f.value}`).join('; '));
+  for (const t of src.texts) parts.push(`[Wikipedia ${t.lang}: ${t.title}]\n${t.text}`);
+  if (src.osmTags) parts.push('[OpenStreetMap] ' + Object.entries(src.osmTags).map(([k, v]) => `${k}=${v}`).join('; '));
+  return parts.join('\n\n');
+}
+
+/* ================= Berättelse ================= */
+const storyKey = c => c.id + '|' + [...cfg.interests].sort().join(',');
+function cachedStory(c) { return LS.get('zn.stories', {})[storyKey(c)] || null; }
+function cacheStory(c, story) {
+  const all = LS.get('zn.stories', {});
+  all[storyKey(c)] = { ...story, t: Date.now() };
+  const keys = Object.keys(all).sort((a, b) => all[b].t - all[a].t);
+  for (const k of keys.slice(60)) delete all[k];
+  if (!LS.set('zn.stories', all)) { for (const k of keys.slice(20)) delete all[k]; LS.set('zn.stories', all); }
+}
+async function makeStory(c, src) {
+  const interests = interestLabels().join(', ') || 'allmänt intresserad';
+  const prompt = `Du är Zeno, en kunnig och varm reseguide. Skriv på svenska om platsen "${c.name}".
+Resenärens intressen: ${interests}. Låt intressena styra vinkeln och vad du lyfter fram, men ändra aldrig fakta.
+
+REGLER:
+- Använd BARA fakta som står i KÄLLOR nedan. Hitta aldrig på årtal, namn, siffror eller händelser.
+- Saknas något, skriv hellre "det vet källorna inte" än att gissa.
+- Översätt engelska källor till naturlig svenska.
+- Skriv levande och konkret, som till någon som står framför platsen just nu.
+
+Svara enbart med JSON:
+{"oneLine": "...", "minute": "...", "deep": [{"heading": "...", "text": "..."}]}
+- oneLine: en mening om vad platsen är.
+- minute: ca 150 ord, löpande text utan rubriker.
+- deep: 2–4 avsnitt, sammanlagt ca 400 ord, med rubriker som Historia, Arkitektur, Personer eller Kuriosa när källorna räcker. Är källorna tunna: färre och kortare avsnitt.
+
+KÄLLOR:
+${sourceText(src)}`;
+  const s = await gemini([{ text: prompt }], { temperature: 0.2 });
+  return {
+    oneLine: String(s.oneLine || ''), minute: String(s.minute || ''),
+    deep: (Array.isArray(s.deep) ? s.deep : []).map(d => ({ heading: String(d.heading || ''), text: String(d.text || '') })),
+    facts: src.facts, image: src.image,
+    sources: src.texts.map(t => ({ lang: t.lang, title: t.title, url: t.url })), hasOsm: !!src.osmTags, hasWd: !!src.facts.length
+  };
+}
+
+/* ================= Historik ================= */
+let hist = LS.get('zn.hist', []);
+function saveHist() {
+  hist = hist.slice(0, 100);
+  if (!LS.set('zn.hist', hist)) { hist = hist.slice(0, 40).map((e, i) => i > 20 ? { ...e, thumb: '' } : e); LS.set('zn.hist', hist); }
+}
+const slimCand = c => ({ id: c.id, qid: c.qid, name: c.name, desc: c.desc, lat: c.lat, lon: c.lon, thumb: c.thumb, wp: c.wp, osm: c.osm ? { type: c.osm.type, id: c.osm.id, tags: c.osm.tags } : null });
+function addHist(c, ctx) {
+  const e = { t: Date.now(), name: c.name, thumb: ctx.thumb || '', via: ctx.via, verdict: null, cand: slimCand(c) };
+  hist.unshift(e); saveHist(); renderHome();
+  return e;
+}
+function stats() {
+  const v = hist.filter(e => e.verdict);
+  return { right: v.filter(e => e.verdict === 'right').length, total: v.length };
+}
+
+/* ================= Startskärmen ================= */
+function renderHome() {
+  const s = stats();
+  $('#statsLine').textContent = s.total ? `Träffsäkerhet: ${s.right} av ${s.total} rätt (${Math.round(100 * s.right / s.total)} %)` : '';
+  $('#histTitle').hidden = !hist.length;
+  $('#history').innerHTML = hist.slice(0, 30).map((e, i) => {
+    const d = new Date(e.t);
+    const when = d.toLocaleDateString('sv-SE') === today() ? d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+    const tag = e.verdict === 'right' ? '<span class="tag ok">rätt</span>' : e.verdict === 'wrong' ? '<span class="tag bad">fel</span>' : '';
+    return `<button class="hist" data-i="${i}">${e.thumb ? `<img src="${e.thumb}" alt="">` : '<span class="ph">🏛️</span>'}
+      <span><span class="n">${esc(e.name)}</span><br><span class="m">${esc(when)}</span></span>${tag}</button>`;
+  }).join('');
+}
+$('#history').addEventListener('click', ev => {
+  const b = ev.target.closest('.hist'); if (!b) return;
+  const e = hist[+b.dataset.i]; if (!e || !e.cand) return;
+  openResult();
+  if (e.cand.lat == null) { renderNotFoundFromHist(e); return; }
+  openPlace(e.cand, { via: 'history', entry: e, thumb: e.thumb });
+});
+
+/* ================= Vyer ================= */
+const openView = s => $(s).classList.add('open');
+const closeView = s => $(s).classList.remove('open');
+function openResult() { stopSpeak(); openView('#res'); $('#res').scrollTop = 0; }
+function closeResult() { stopSpeak(); closeView('#res'); current = null; }
+$('#resBack').onclick = closeResult;
+window.__back = () => {
+  if ($('#setSheet').classList.contains('open')) { closeSettings(); return true; }
+  if ($('#cam').classList.contains('open')) { closeCam(); return true; }
+  if ($('#res').classList.contains('open')) { closeResult(); return true; }
+  return false;
+};
+function renderBusy(thumb, text) {
+  $('#resBody').innerHTML = `<div class="busy">${thumb ? `<img src="${thumb}" alt="">` : ''}<div class="spin"></div><div id="busyText">${esc(text)}</div></div>`;
+}
+function setBusy(text) { const el = $('#busyText'); if (el) el.textContent = text; }
+function showError(msg, thumb) {
+  $('#resBody').innerHTML = `${thumb ? `<div class="busy"><img src="${thumb}" alt=""></div>` : ''}<div class="err">${esc(msg)}</div>
+    <div class="pad"><button class="big" onclick="closeResult()">Tillbaka</button></div>`;
+}
+
+/* ================= Kamera ================= */
+let stream = null, camTimer = null;
+async function openCam() {
+  if (!navigator.onLine) { toast('Inget nät just nu. Zeno behöver uppkoppling för att hitta platsen.'); return; }
+  if (!cfg.gemini) { openSettings(true); return; }
+  if (!navigator.mediaDevices?.getUserMedia) { $('#fileFallback').click(); return; }
+  openView('#cam');
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    const v = $('#video'); v.srcObject = stream; await v.play().catch(() => { });
+    camTick();
+  } catch (e) {
+    console.log('kamera', e);
+    closeCam();
+    toast('Kameran i appen startade inte. Öppnar kameraappen i stället.');
+    $('#fileFallback').click();
+  }
+}
+function closeCam() {
+  clearTimeout(camTimer);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; $('#video').srcObject = null;
+  closeView('#cam');
+}
+function camTick() {
+  if (!stream) return;
+  const h = headingNow(800);
+  $('#camHeading').textContent = h == null ? 'Ingen kompass' : `${dirName(h)} · ${h}°`;
+  camTimer = setTimeout(camTick, 300);
+}
+function shoot() {
+  const v = $('#video');
+  if (!v.videoWidth) { toast('Kameran är inte klar än.'); return; }
+  const heading = headingNow(1200);
+  const b64 = drawToB64(v, v.videoWidth, v.videoHeight, 1024);
+  closeCam();
+  identifyFlow({ b64, heading });
+}
+$('#shutter').onclick = shoot;
+$('#camClose').onclick = closeCam;
+async function onFile(ev) {
+  const file = ev.target.files?.[0]; ev.target.value = '';
+  if (!file) return;
+  closeCam();
+  openResult(); renderBusy('', 'Läser fotot…');
+  // Kompassen hinner vakna efter kameraappen; antar att telefonen fortfarande pekar ungefär mot byggnaden.
+  await sleep(1200);
+  const heading = headingNow(1000);
+  try { identifyFlow({ b64: await fileToB64(file), heading }); }
+  catch (e) { showError(e.message); }
+}
+$('#fileAlt').onchange = onFile;
+$('#fileFallback').onchange = onFile;
+
+/* ================= Flöden ================= */
+let current = null;   // { c, src, story, qa: [], entry }
+
+async function identifyFlow({ b64, heading }) {
+  if (!navigator.onLine) { openResult(); return showError('Inget nät just nu. Zeno behöver uppkoppling för att hitta platsen.'); }
+  const thumb = await thumbFrom(b64);
+  openResult(); renderBusy(thumb, 'Hämtar din position…');
+  let p, cands, info;
+  try { p = await freshPos(); } catch (e) { return showError(e.message, thumb); }
+  setBusy('Letar efter platser i närheten…');
+  try { cands = await getCandidates(p, heading); } catch (e) { return showError(e.message, thumb); }
+  setBusy(`Zeno tittar på bilden… (${cands.length} platser i närheten)`);
+  try { info = await identify(b64, cands, p, heading); } catch (e) { return showError(e.message, thumb); }
+  const ctx = { thumb, via: 'photo', pos: p, heading };
+  if (info.match && info.confidence === 'high') return openPlace(info.match, ctx);
+  if (info.match) return renderPick([info.match, ...info.alts].slice(0, 3), ctx, 'Zeno är inte helt säker. Vilken är det?', info);
+  renderNotFound(info, ctx, cands.filter(c => c.inView !== false).slice(0, 3));
+}
+
+async function whereFlow() {
+  if (!navigator.onLine) { toast('Inget nät just nu.'); return; }
+  openResult(); renderBusy('', 'Hämtar din position…');
+  let p, cands;
+  try { p = await freshPos(); } catch (e) { return showError(e.message); }
+  const heading = headingNow(1500);
+  setBusy('Letar efter platser i närheten…');
+  try { cands = await getCandidates(p, heading); } catch (e) { return showError(e.message); }
+  const inView = cands.filter(c => c.inView === true);
+  const opts = (inView.length ? inView : cands).slice(0, 3);
+  if (!opts.length) return showError('Hittade inga kända platser inom 600 meter.');
+  renderPick(opts, { via: 'where', pos: p, heading }, inView.length ? `Det här finns åt ${dirName(heading)}, dit du pekar:` : 'Närmast dig:');
+}
+
+function candCard(c, i) {
+  const where = c.dist != null ? `${fmtDist(c.dist)} ${c.bearing != null ? 'åt ' + dirName(c.bearing) : ''}` : '';
+  return `<button class="cand" data-i="${i}">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy">` : '<span class="ph">🏛️</span>'}
+    <span><span class="n">${esc(c.name)}</span><br><span class="m">${esc(c.desc || '')}</span><br>
+    <span class="m">${esc(where)}</span> ${c.inView === true ? '<span class="tag">i blickfånget</span>' : ''}</span></button>`;
+}
+function renderPick(opts, ctx, title, info) {
+  $('#resBody').innerHTML = `${ctx.thumb ? `<img class="heroimg" src="${ctx.thumb}" alt="" style="max-height:180px">` : ''}
+    <div class="pad"><h2 style="margin:16px 0 4px">${esc(title)}</h2>
+    ${info?.seen ? `<p class="m">På bilden: ${esc(info.seen)}</p>` : ''}
+    <div id="pickList">${opts.map(candCard).join('')}</div>
+    ${ctx.via === 'photo' ? '<button class="big" id="noneBtn" style="margin-top:8px">Ingen av dessa</button>' : ''}</div>`;
+  $('#pickList').onclick = ev => { const b = ev.target.closest('.cand'); if (b) openPlace(opts[+b.dataset.i], ctx); };
+  const nb = $('#noneBtn');
+  if (nb) nb.onclick = () => renderNotFound(info || {}, ctx, []);
+}
+function renderNotFound(info, ctx, nearby) {
+  const facts = [['Stil', info.style], ['Tid', info.era]].filter(f => f[1]);
+  $('#resBody').innerHTML = `${ctx.thumb ? `<img class="heroimg" src="${ctx.thumb}" alt="">` : ''}
+    <div class="pad place"><h2>Jag hittar inte platsen</h2>
+    <p>Byggnaden fanns inte bland de kända platserna i närheten, så jag gissar inte på ett namn.</p>
+    ${info.seen ? `<p class="lead">${esc(info.seen)}</p>` : ''}
+    ${facts.length ? `<div class="facts">${facts.map(f => `<span class="fact"><b>${f[0]}:</b> ${esc(f[1])}</span>`).join('')}</div><p class="m">Stil och tid är Zenos bedömning utifrån bilden, inte fakta från en källa.</p>` : ''}
+    ${nearby.length ? `<h3 style="margin-top:20px">Är det någon av dessa?</h3><div id="pickList">${nearby.map(candCard).join('')}</div>` : ''}
+    ${ctx.via === 'photo' ? `<div class="box"><h4>Fanns byggnaden här egentligen?</h4><p class="m" style="margin-top:0">Räkna det som en miss om det är en känd byggnad som Zeno borde ha hittat.</p><button class="big" id="missBtn">Räkna som miss</button></div>` : ''}</div>`;
+  const pl = $('#pickList');
+  if (pl) pl.onclick = ev => { const b = ev.target.closest('.cand'); if (b) openPlace(nearby[+b.dataset.i], ctx); };
+  const mb = $('#missBtn');
+  if (mb) mb.onclick = () => {
+    hist.unshift({ t: Date.now(), name: 'Inte hittad' + (info.seen ? ': ' + info.seen.slice(0, 60) : ''), thumb: ctx.thumb || '', via: 'photo', verdict: 'wrong', cand: { notFound: true, info } });
+    saveHist(); renderHome(); mb.disabled = true; mb.textContent = 'Räknad som miss';
+  };
+}
+function renderNotFoundFromHist(e) { renderNotFound(e.cand.info || {}, { thumb: e.thumb, via: 'history' }, []); }
+
+async function openPlace(c, ctx) {
+  stopSpeak();
+  const entry = ctx.via === 'history' ? ctx.entry : addHist(c, ctx);
+  current = { c, src: null, story: null, qa: [], entry, ctx, depth: cfg.depth };
+  const dist = ctx.pos ? haversine(ctx.pos, c) : null;
+  const meta = dist != null ? `${fmtDist(dist)} åt ${dirName(bearing(ctx.pos, c))}` : (c.desc || '');
+  $('#resBody').innerHTML = `<img class="heroimg" id="heroImg" src="${esc(c.thumb || ctx.thumb || '')}" alt="" ${c.thumb || ctx.thumb ? '' : 'hidden'}>
+    <div class="pad place"><h2>${esc(c.name)}</h2><div class="m">${esc(meta)}</div>
+    <div id="storyArea"><div class="busy"><div class="spin"></div><div id="busyText">Zeno läser på om platsen…</div></div></div></div>`;
+  let story = cachedStory(c);
+  if (!story) {
+    try {
+      current.src = await fetchSources(c);
+      if (current?.c !== c) return;
+      setBusy('Zeno skriver berättelsen…');
+      story = await makeStory(c, current.src);
+      cacheStory(c, story);
+    } catch (e) {
+      if (current?.c !== c) return;
+      $('#storyArea').innerHTML = `<div class="err" style="margin:16px 0">${esc(e.message)}</div><button class="big" id="retryBtn">Försök igen</button>`;
+      $('#retryBtn').onclick = () => openPlace(c, { ...ctx, via: 'history', entry });
+      return;
+    }
+  }
+  if (current?.c !== c) return;
+  current.story = story;
+  if (story.image) { const hi = $('#heroImg'); hi.src = story.image; hi.hidden = false; }
+  renderStory();
+}
+
+function storyText(depth) {
+  const s = current.story;
+  if (depth === 'one') return s.oneLine;
+  if (depth === 'deep') return s.deep.map(d => `${d.heading}. ${d.text}`).join('\n\n') || s.minute;
+  return s.minute;
+}
+function renderStory() {
+  const { story: s, entry, depth } = current;
+  const body = depth === 'one' ? ''
+    : depth === 'deep' ? (s.deep.length ? s.deep.map(d => `<h3>${esc(d.heading)}</h3>${paras(d.text)}`).join('') : paras(s.minute))
+      : paras(s.minute);
+  const verdictBox = entry && entry.via === 'photo' ? `<div class="box"><h4>Stämmer platsen?</h4>
+      <div class="two"><button id="vRight" class="${entry.verdict === 'right' ? 'okon' : ''}">✓ Rätt</button>
+      <button id="vWrong" class="${entry.verdict === 'wrong' ? 'badon' : ''}">✗ Fel</button></div></div>` : '';
+  const srcLinks = s.sources.map(x => `<a href="${esc(x.url)}">Wikipedia (${x.lang}): ${esc(x.title)}</a>`);
+  if (s.hasWd && current.c.qid) srcLinks.push(`<a href="https://www.wikidata.org/wiki/${esc(current.c.qid)}">Wikidata</a>`);
+  if (s.hasOsm) srcLinks.push('OpenStreetMap');
+  $('#storyArea').innerHTML = `<p class="lead">${esc(s.oneLine)}</p>
+    <div class="seg" id="seg">${DEPTHS.map(([k, l]) => `<button data-d="${k}" class="${k === depth ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <button class="big pri" id="speakBtn">${speaking ? '■ Stoppa' : '▶ Lyssna'}</button>
+    <div class="story" style="margin-top:14px">${body}</div>
+    ${s.facts?.length ? `<div class="facts">${s.facts.map(f => `<span class="fact"><b>${esc(f.label)}:</b> ${esc(f.value)}</span>`).join('')}</div>` : ''}
+    ${verdictBox}
+    <div class="box"><h4>Fråga Zeno om platsen</h4>
+      <div class="qa" id="qa">${current.qa.map(x => `<div class="q">${esc(x.q)}</div>${paras(x.a)}`).join('')}</div>
+      <div class="ask"><input id="askIn" placeholder="T.ex. Varför ser tornet ut så?" enterkeyhint="send"><button id="askBtn">Fråga</button></div></div>
+    <div class="src">Källor: ${srcLinks.join(' · ') || 'inga'}<br>
+    Text från Wikipedia (CC BY-SA 4.0), fakta från Wikidata (CC0), kartdata © OpenStreetMap-bidragsgivare (ODbL). Berättelsen är skriven av Gemini utifrån källorna.</div>`;
+  $('#seg').onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    current.depth = b.dataset.d; stopSpeak(); renderStory();
+  };
+  $('#speakBtn').onclick = () => speaking ? stopSpeak() : speak(storyText(current.depth));
+  if (verdictBox) {
+    $('#vRight').onclick = () => setVerdict('right');
+    $('#vWrong').onclick = () => setVerdict('wrong');
+  }
+  $('#askBtn').onclick = ask;
+  $('#askIn').onkeydown = ev => { if (ev.key === 'Enter') ask(); };
+  $('#storyArea').querySelectorAll('.src a').forEach(a => a.onclick = ev => { if (nativeVer() >= 1) { ev.preventDefault(); App.openExternal(a.href); } });
+}
+function paras(t) { return String(t || '').split(/\n+/).filter(x => x.trim()).map(x => `<p>${esc(x)}</p>`).join(''); }
+function setVerdict(v) {
+  const e = current.entry; if (!e) return;
+  e.verdict = e.verdict === v ? null : v;
+  saveHist(); renderHome(); renderStory();
+  if (e.verdict) { const s = stats(); toast(`Träffsäkerhet: ${s.right} av ${s.total} rätt`); }
+}
+async function ask() {
+  const inp = $('#askIn'); const q = inp.value.trim(); if (!q) return;
+  const btn = $('#askBtn'); btn.disabled = true; inp.disabled = true;
+  const qaEl = $('#qa');
+  qaEl.insertAdjacentHTML('beforeend', `<div class="q">${esc(q)}</div><p class="m" id="thinking">Zeno tänker…</p>`);
+  try {
+    if (!current.src) current.src = await fetchSources(current.c);
+    const before = current.qa.map(x => `F: ${x.q}\nS: ${x.a}`).join('\n');
+    const a = await gemini([{
+      text: `Du är Zeno, en reseguide. Resenären står vid "${current.c.name}" och har en fråga.
+Svara på svenska, kort (högst 120 ord) och BARA utifrån KÄLLOR nedan. Står svaret inte i källorna: säg att källorna inte berättar det, och gissa inte.
+
+KÄLLOR:
+${sourceText(current.src)}
+${before ? '\nTIDIGARE FRÅGOR:\n' + before : ''}
+
+FRÅGA: ${q}`
+    }], { json: false, temperature: 0.2 });
+    current.qa.push({ q, a });
+  } catch (e) {
+    current.qa.push({ q, a: '⚠ ' + e.message });
+  }
+  renderStory();
+  const ai = $('#askIn'); if (ai) ai.focus();
+}
+
+/* ================= Uppläsning ================= */
+let speaking = false;
+function updateSpeakBtn() { const b = $('#speakBtn'); if (b) b.textContent = speaking ? '■ Stoppa' : '▶ Lyssna'; }
+function webSpeak(text) {
+  return new Promise(res => {
+    if (!('speechSynthesis' in window)) return res();
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'sv-SE';
+    const v = speechSynthesis.getVoices().find(v => /^sv/i.test(v.lang)); if (v) u.voice = v;
+    u.onend = u.onerror = () => res();
+    speechSynthesis.speak(u);
+  });
+}
+async function speak(text) {
+  if (!text) return;
+  stopSpeak();
+  speaking = true; updateSpeakBtn();
+  try {
+    if (nativeVer() >= 1) {
+      try { App.keepScreenOn(true); } catch { }
+      await callNative(id => App.speak(text, id));
+    } else {
+      await webSpeak(text);
+    }
+  } catch (e) {
+    if (/nosv/.test(e.message)) {
+      toast('Svensk röst saknas. Installera svenska under Inställningar → Allmän hantering → Text till tal.', 6000);
+      if (speaking) await webSpeak(text);
+    } else if (!/stopped/.test(e.message)) {
+      toast('Uppläsningen fungerade inte.');
+    }
+  } finally {
+    speaking = false;
+    try { if (nativeVer() >= 1) App.keepScreenOn(false); } catch { }
+    updateSpeakBtn();
+  }
+}
+function stopSpeak() {
+  if (!speaking) return;
+  speaking = false;
+  try { if (nativeVer() >= 1) App.stopSpeaking(); } catch { }
+  try { speechSynthesis.cancel(); } catch { }
+  updateSpeakBtn();
+}
+
+/* ================= Inställningar ================= */
+function openSettings(welcome = false) {
+  const s = stats();
+  const nv = nativeVer();
+  $('#setBody').innerHTML = `
+    ${welcome ? `<h2>Välkommen till Zeno</h2><p>Fota en byggnad så berättar Zeno vad det är och dess historia. Börja med en gratis Gemini-nyckel och välj vad du tycker är intressant.</p>`
+      : '<h2>Inställningar</h2>'}
+    <label class="f" for="gemKey">Gemini API-nyckel</label>
+    <input id="gemKey" autocomplete="off" spellcheck="false" placeholder="AIza…" value="${esc(cfg.gemini)}">
+    <p class="m">Gratis på <a href="https://aistudio.google.com/apikey" class="ext">aistudio.google.com/apikey</a> (samma som i Skivbacken går bra). Nyckeln sparas bara i telefonen. Gemini-anrop idag: ${gemCount()}.</p>
+    <label class="f">Dina intressen (välj 3–6)</label>
+    <div class="chips" id="intChips">${INTERESTS.map(([k, l]) => `<button data-k="${k}" class="${cfg.interests.includes(k) ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <label class="f" for="depthSel">Berättelsens längd från början</label>
+    <select id="depthSel">${DEPTHS.map(([k, l]) => `<option value="${k}" ${k === cfg.depth ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <label class="f" for="modelSel">Gemini-modell</label>
+    <select id="modelSel"><option value="">Automatiskt (rekommenderas)</option>${GEMINI_MODELS.map(m => `<option ${m === cfg.geminiModel ? 'selected' : ''}>${m}</option>`).join('')}</select>
+    <button class="big pri" id="saveSet" style="margin-top:20px">${welcome ? 'Kom igång' : 'Spara'}</button>
+    ${welcome ? '' : `
+    <div class="box"><h4>Träffsäkerhet</h4>
+      <p style="margin:0">${s.total ? `${s.right} av ${s.total} rätt (${Math.round(100 * s.right / s.total)} %). Målet för etapp 1 är minst 8 av 10 på 30 foton.` : 'Inga foton bedömda än. Tryck Rätt eller Fel efter varje foto.'}</p></div>
+    <div class="row" style="flex-wrap:wrap">
+      <button id="clrStories">Rensa sparade berättelser</button>
+      <button id="clrHist">Rensa historiken</button>
+    </div>
+    <div class="box"><h4>Nyheter</h4>${CHANGELOG.map(([v, d, items]) => `<b>${v}</b> <span class="m">${d}</span><ul class="log">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`).join('')}</div>
+    <p class="m">Webbapp ${WEB_VERSION} · ${nv ? 'Android-app, brygga ' + nv : 'i webbläsaren'}<br>
+    Kartdata © OpenStreetMap-bidragsgivare. Text från Wikipedia (CC BY-SA 4.0). Fakta från Wikidata.</p>`}`;
+  $('#intChips').onclick = ev => { const b = ev.target.closest('button'); if (b) b.classList.toggle('on'); };
+  $('#saveSet').onclick = () => {
+    const key = $('#gemKey').value.trim();
+    const ints = [...document.querySelectorAll('#intChips .on')].map(b => b.dataset.k);
+    if (!key) { toast('Lägg in en Gemini-nyckel först.'); return; }
+    if (!ints.length) { toast('Välj minst ett intresse.'); return; }
+    cfg.gemini = key; cfg.interests = ints; cfg.depth = $('#depthSel').value; cfg.geminiModel = $('#modelSel').value;
+    saveCfg(); closeSettings(); toast('Sparat.');
+  };
+  const cs = $('#clrStories'); if (cs) cs.onclick = () => { localStorage.removeItem('zn.stories'); toast('Sparade berättelser rensade.'); };
+  const ch = $('#clrHist'); if (ch) ch.onclick = () => { if (confirmTwice(ch)) { hist = []; saveHist(); renderHome(); toast('Historiken rensad.'); openSettings(); } };
+  $('#setBody').querySelectorAll('a.ext').forEach(a => a.onclick = ev => { if (nativeVer() >= 1) { ev.preventDefault(); App.openExternal(a.href); } });
+  openView('#setSheet');
+}
+// Undviker webbläsarens confirm()-ruta: första trycket frågar, andra utför.
+function confirmTwice(btn) {
+  if (btn.dataset.sure) return true;
+  btn.dataset.sure = '1'; btn.textContent = 'Tryck igen för att rensa'; return false;
+}
+function closeSettings() { closeView('#setSheet'); }
+$('#setSheet').addEventListener('click', ev => { if (ev.target.id === 'setSheet' && cfg.gemini && cfg.interests.length) closeSettings(); });
+$('#btnSettings').onclick = () => openSettings(false);
+
+/* ================= Start ================= */
+$('#btnShoot').onclick = openCam;
+$('#btnWhere').onclick = () => { if (!cfg.gemini) { openSettings(true); return; } whereFlow(); };
+window.__checkPending = async () => {
+  if (nativeVer() < 1) return;
+  try {
+    const b64 = await callNative(id => App.takePending(id));
+    if (b64) identifyFlow({ b64: await resizeB64(b64, 1024), heading: null });
+  } catch (e) { toast(e.message); }
+};
+window.addEventListener('offline', () => toast('Inget nät. Zeno behöver uppkoppling.'));
+startGps();
+startCompass();
+updateGps();
+renderHome();
+if (!cfg.gemini || !cfg.interests.length) openSettings(true);
+window.__checkPending();
+</script>
+</body>
+</html>
